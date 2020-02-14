@@ -47,75 +47,30 @@ Testcase 1: Repeating number is 2 and smallest positive missing number is 1.
 Testcase 2: Repeating number is 3 and smallest positive missing number is 2.
 """
 
-def biggest_arrange(arr:list  = [4, 8, 3, 6, 1, 0, 23, 90, 2])-> int:
-    #find a continuous sub-array which adds to a given number S
-
-    if len(arr) <= 0 : raise ValueError("Array too small")
-    if len(arr) <= 1 : return arr
-
-    n = len(arr)
-
-    ret_arr = list(range(n))
-    single_digit_matrix = list(list())
-
-    #create a multiple dimension array for the digits:
-    for i  in range(n):
-        string_digit_array = list(str(arr[i]))
-        int_digit_arr = [int(string_digit) for string_digit in string_digit_array]
-
-        # concatenate each array to the big array
-        single_digit_matrix += [int_digit_arr]
-
-    print(single_digit_matrix)
-
-
-    # for the first line
-    level = 0
-    max_dgit_num = 3
-
-    #order the single digit array using a counter algorithm (dictionary from 0 to 9)
-    count_arr = [[0] * 10] * max_dgit_num
-
-    for i in range(len(single_digit_matrix)):
-        value = single_digit_matrix[i][level]
-        #print("value is:"+str(value))
-        count_arr[level][value] += -1
+def repeated_and_missing(arr:list  = [2,1,3,1])-> int:
     
-    print("the original count array is: "+str(count_arr))
+    n = len(arr) #goes from 1 to n+1
+    seeker_list = [1] * n
 
-    #modify the counting array acordng to a counting sort algorithm
-    i = 1
-    while i < len(count_arr[level]):
-        count_arr[level][i] += count_arr[level][i - 1]
-        i+=1
-    
+    for i, num in enumerate(arr):
 
-    count_arr[level] = list(map(lambda x: x + n, count_arr[level]))
-    
-    print("the MODIFIED count array is: "+str(count_arr))
-    
-    
+        # repeated found
+        if seeker_list[num - 1] == -1:
+            repeated = num
 
-    # create the return vector
-    for i in range(len(arr)):
+        seeker_list[num - 1] = -1
 
-        value = single_digit_matrix[i][level]
-        #print("dic index: "+str(dic_index))
-        ret_index = count_arr[level][value] 
-        #print("ret index: "+str(ret_index))
-        count_arr[level][value] += -1
-        #print("count_arr: "+str(ret_index))
-        ret_arr[ret_index] = single_digit_matrix[i]
+    missing = seeker_list.index(1) + 1 # this might give a o(2n) complexity
 
-
-    return ret_arr
+    return (repeated, missing)
 
 
 
 if __name__ == '__main__': 
 
-    a = [1,2,23,26,32,34,7,449,46,44,7,901,31,94]
-    big_n = biggest_arrange(a)
-    print("the biggest possible number is: "+str(big_n))
+    a = [1,2,3,14,13,12,4,5,12,11,7,8,9,10]
+    (repeated, missing) = repeated_and_missing(a)
+    print("the repeated is: "+str(repeated)+" and the missing is: "+str(missing))
+
 
 
