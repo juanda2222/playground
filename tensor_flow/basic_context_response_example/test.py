@@ -1,31 +1,23 @@
 # things we need for NLP
 import nltk
-nltk.download('punkt')
 from nltk.stem.lancaster import LancasterStemmer
 stemmer = LancasterStemmer()
 
-
+# things we need for Tensorflow
+import numpy as np
+import tflearn
+import tensorflow as tf
+import random
 
 # import our chat-bot intents file
 import json
-import random
-import pickle
-import numpy as np
-
-
-with open('./intents.json') as json_data:
+with open('intents.json') as json_data:
     intents = json.load(json_data)
-
-
-############################################
-####------ format intents data -------######
-############################################
-
+    
 words = []
 classes = []
 documents = []
-ignore_words = list('!?+*~`[]{.}¿¡%&$#"-^<>/()')
-
+ignore_words = ['?']
 # loop through each sentence in our intents patterns
 for intent in intents['intents']:
     for pattern in intent['patterns']:
@@ -39,38 +31,18 @@ for intent in intents['intents']:
         if intent['tag'] not in classes:
             classes.append(intent['tag'])
 
-# stem and lower each word
+# stem and lower each word and remove duplicates
 words = [stemmer.stem(w.lower()) for w in words if w not in ignore_words]
+words = sorted(list(set(words)))
 
 # remove duplicates
-words = sorted(list(set(words)))
 classes = sorted(list(set(classes)))
 
-print (len(documents), "documents (phrases)")
-print (len(classes), "classes (context)", classes)
+print (len(documents), "documents")
+print (len(classes), "classes", classes)
 print (len(words), "unique stemmed words", words)
 
-#######################################################################
-####------ Add synonims to the word pool (english method) -------######
-#######################################################################
-
-# for english synonims:
-import nltk
-from nltk.corpus import wordnet
-nltk.download('wordnet')
-syns = wordnet.synsets("dog")
-print(syns)
-
-
-
-
-
-
-
-#########################################################
-####------ create our training numeric data -------######
-#########################################################
-
+# create our training data
 training = []
 output = []
 # create an empty array for our output
@@ -102,9 +74,26 @@ training = np.array(training)
 train_x = list(training[:,0])
 train_y = list(training[:,1])
 
-print (len(train_x), "training x. X example: ", train_x[0])
-print (len(train_y), "training y. Y example: ", train_y[0])
+print (len(train_x), "training x. X example: ", train_x)
+print (len(train_y), "training y. Y example: ", train_y)
 
-# save all of our data structures
-with open( "training_data.pickle", "wb" ) as pickle_data:
-    pickle.dump( {'words':words, 'classes':classes, 'train_x':train_x, 'train_y':train_y},  pickle_data)
+# reset underlying graph data
+tf.reset_default_graph()
+# Build neural network
+net = tflearn.input_data(shape=[None, len(train_x[0])])
+print(">> Input tensor: ", net)
+net = tflearn.fully_connected(net, 8)
+print(">> Tensor 1: ", net)
+net = tflearn.fully_connected(net, 8)
+print(">> Tensor 2: ", net)
+net = tflearn.fully_connected(net, len(train_y[0]), activation='softmax')
+print(">> Tensor 3: ", net)
+net = tflearn.regression(net)
+print(">> Regression tensor: ", net)
+
+# Define model and setup tensorboard
+model = tflearn.DNN(net, tensorboard_dir='tflearn_logs')
+print(">> General model: ", model)
+# Start training (apply gradient descent algorithm)
+model.fit(train_x, train_y, n_epoch=1000, batch_size=8, show_metric=True)
+model.save('model.tflearn')
