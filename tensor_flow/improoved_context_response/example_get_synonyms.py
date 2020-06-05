@@ -6,9 +6,8 @@ synonyms = []
 antonyms = []
 
 for syn in wordnet.synsets("is"):
-    print("Synsets: ", syn)
     for l in syn.lemmas():
-        print("Words: ", l.name)
+        print("Words: ", l.name())
         synonyms.append(l.name())
         if l.antonyms():
                 antonyms.append(l.antonyms()[0].name())
