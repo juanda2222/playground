@@ -86,10 +86,13 @@ for phrase, tag in documents:
     prhase_no += 1
     synonyms_documents.append((phrase, tag))
 
+    # generate the tagged word list:
+    #tagged_phrase = nltk.pos_tag(phrase)
+
     # iterate each word
     for i, word in enumerate(phrase):
         
-        # copy the frase to avoid overwriting:
+        # copy the frase to avoid overwriting of the original phrase:
         aux_phrase = copy(phrase)
 
         #iterate throug synonyms
@@ -100,7 +103,7 @@ for phrase, tag in documents:
                 #print("Synonyms: ", l.name())
                 aux_phrase[i] = synonym.name()
                 print("New phrase: ", aux_phrase, "Tag: ", tag, ", original No.", prhase_no )
-                synonyms_documents.append( (copy(aux_phrase), tag ) )
+                synonyms_documents.append( (copy(aux_phrase), tag ) ) # use copy to avoid duplicates 
     
             
 print(len(synonyms_documents), "Synonyms sencences. List secction: ", synonyms_documents[:120])

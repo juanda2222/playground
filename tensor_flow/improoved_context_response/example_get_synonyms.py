@@ -5,7 +5,11 @@ from nltk.corpus import wordnet
 synonyms = []
 antonyms = []
 
-for syn in wordnet.synsets("is"):
+#synset = wordnet.synset("on")
+#print("original synset: ", synset)
+
+for syn in wordnet.synsets("on"):
+    print("Syns: ", syn)
     for l in syn.lemmas():
         print("Words: ", l.name())
         synonyms.append(l.name())
