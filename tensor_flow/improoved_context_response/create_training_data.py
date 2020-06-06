@@ -87,7 +87,7 @@ for phrase, tag in documents:
     synonyms_documents.append((phrase, tag))
 
     # generate the tagged word list:
-    #tagged_phrase = nltk.pos_tag(phrase)
+    tagged_phrase = nltk.pos_tag(phrase)
 
     # iterate each word
     for i, word in enumerate(phrase):
@@ -95,15 +95,25 @@ for phrase, tag in documents:
         # copy the frase to avoid overwriting of the original phrase:
         aux_phrase = copy(phrase)
 
-        #iterate throug synonyms
-        for syn in wordnet.synsets(word):
-                        
-            # process unique synonyms
-            for synonym in syn.lemmas():
-                #print("Synonyms: ", l.name())
-                aux_phrase[i] = synonym.name()
-                print("New phrase: ", aux_phrase, "Tag: ", tag, ", original No.", prhase_no )
-                synonyms_documents.append( (copy(aux_phrase), tag ) ) # use copy to avoid duplicates 
+        # get the synonim type (noun, adjective, etc...) of the word
+        word_type = tagged_phrase[i][1][0].lower()
+
+        # avoid error with special kind of types such as "possessive wh-pronoun" identified with "w" character
+        try:
+            #iterate throug synonyms
+            for syn in wordnet.synsets(word, word_type): # filter by word type j, n, i, c ,r ,v, u, p
+                            
+                # process unique synonyms
+                for synonym in syn.lemmas():
+
+                    #print("Synonyms: ", l.name())
+                    aux_phrase[i] = synonym.name()
+                    print("New phrase: ", aux_phrase, "Tag: ", tag, ", original No.", prhase_no )
+                    synonyms_documents.append( (copy(aux_phrase), tag ) ) # use copy to avoid duplicates 
+
+        except Exception:
+            print("Synonyms not found for that type of word")
+        
     
             
 print(len(synonyms_documents), "Synonyms sencences. List secction: ", synonyms_documents[:120])
