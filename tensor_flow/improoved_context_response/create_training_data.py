@@ -25,42 +25,6 @@ with open(INTENTS_PATH) as json_data:
     intents = json.load(json_data)
 
 
-############################################
-####------ format intents data -------######
-############################################
-
-words = []
-classes = []
-documents = []
-ignore_words = list('!?+*~`[]{.}¿¡%&$#"-^<>/()')
-
-# loop through each sentence in our intents patterns
-for intent in intents['intents']:
-    for pattern in intent['patterns']:
-        # tokenize each word in the sentence
-        w = nltk.word_tokenize(pattern)
-        # add to our words list
-        words.extend(w)
-        # add to documents in our corpus
-        documents.append((w, intent['tag']))
-        # add to our classes list
-        if intent['tag'] not in classes:
-            classes.append(intent['tag'])
-
-# lematize and lower each word
-words = [lemmatizer.lemmatize(w.lower()) for w in words if w not in ignore_words]
-print(len(words), "Set of duplicated lemmed words!")
-
-# remove duplicates
-"""
-words = list(set(words))
-classes = list(set(classes))
-
-print (len(documents), "documents (phrases)")
-print (len(classes), "classes (context)", classes)
-print (len(words), "unique lemmed words", words)
-"""
-
 #######################################################################
 ####------ Add synonims to the word pool (english method) -------######
 #######################################################################
@@ -74,69 +38,124 @@ nltk.download('wordnet')
 intent_index = 0
 sentence_no = 2
 
-#print(">>>>> all frases taged: ", documents)
-synonyms_documents = [] # copy(documents)
+synonyms_tagged_sentences = [] # copy(documents)
+synonyms_words = []
+synonyms_clases = []
 
 # iterate each sentence
 prhase_no = 0
 count = 1
 
-for phrase, tag in documents:
+# loop through each sentence in our intents patterns
+for intent in intents['intents']:
 
-    prhase_no += 1
-    synonyms_documents.append((phrase, tag))
+    synonyms_clases.append(intent['tag'])
 
-    # generate the tagged word list:
-    tagged_phrase = nltk.pos_tag(phrase)
+    for pattern in intent['patterns']:
 
-    # iterate each word
-    for i, word in enumerate(phrase):
-        
-        # copy the frase to avoid overwriting of the original phrase:
-        aux_phrase = copy(phrase)
+        # separate the text as a list of words. like: ["this", "is", "a", "sentence"]
+        sentence_list = nltk.word_tokenize(pattern)
+        sentence_list = [word.lower() for word in sentence_list] # convert to lowercase
 
-        # get the synonim type (noun, adjective, etc...) of the word
-        word_type = tagged_phrase[i][1][0].lower()
+        prhase_no += 1
+        synonyms_tagged_sentences.append((sentence_list, intent['tag']))
+        synonyms_words.extend(sentence_list)
 
-        # avoid error with special kind of types such as "possessive wh-pronoun" identified with "w" character
-        try:
-            #iterate throug synonyms
-            for syn in wordnet.synsets(word, word_type): # filter by word type j, n, i, c ,r ,v, u, p
-                            
-                # process unique synonyms
-                for synonym in syn.lemmas():
+        # generate the tagged word list:
+        tagged_phrase = nltk.pos_tag(sentence_list)
 
-                    #print("Synonyms: ", l.name())
-                    aux_phrase[i] = synonym.name()
-                    print("New phrase: ", aux_phrase, "Tag: ", tag, ", original No.", prhase_no )
-                    synonyms_documents.append( (copy(aux_phrase), tag ) ) # use copy to avoid duplicates 
-
-        except Exception:
-            print("Synonyms not found for that type of word")
-        
-    
+        # iterate each word
+        for i, word in enumerate(sentence_list):
             
-print(len(synonyms_documents), "Synonyms sencences. List secction: ", synonyms_documents[:120])
+            # copy the frase to avoid overwriting of the original phrase:
+            aux_phrase = copy(sentence_list)
+
+            # get the synonim type (noun, adjective, etc...) of the word
+            word_type = tagged_phrase[i][1][0].lower()
+            synonym_list = []
+
+            # Generate the synonyms list
+            # avoid error with special kind of types such as "possessive wh-pronoun" identified with "w" character
+            try:
+                #iterate throug synonyms
+                for syn in wordnet.synsets(word, word_type): # filter by word type j, n, i, c ,r ,v, u, p
+                                
+                    # process unique synonyms
+                    for synonym in syn.lemmas():
+
+                        #print("Synonyms: ", l.name())
+                        synonym_list.append(synonym.name().lower())
+                
+                # remove duplicates!
+                synonym_list = list(set(synonym_list))
+
+            except Exception:
+                print("Synonyms not found for that type of word")
+            
+            # Append the new synonyms for the current word:
+            for synonym in synonym_list:
+
+                aux_phrase[i] = synonym
+                print("New phrase: ", aux_phrase, "Tag: ", intent['tag'], ", original No.", prhase_no )
+                
+                # add to the sentence list
+                synonyms_tagged_sentences.append( (copy(aux_phrase), intent['tag'] ) ) # use copy to avoid duplicates 
+                # add to the word list (for the dictionary)
+                synonyms_words.extend(aux_phrase)
+                
+# lematize and lower each word
+# synonyms_words = [lemmatizer.lemmatize(w.lower()) for w in synonyms_words if w not in ignore_words] # the bag of words keras method aleady filter
+ 
+# remoove duplicates
+synonyms_words = list(set(synonyms_words))
+synonyms_clases = list(set(synonyms_clases))
+
+print(">> ", len(synonyms_tagged_sentences), "Synonyms sencences. List secction: ", synonyms_tagged_sentences[:120])
+print(">> ", len(synonyms_words), "Synonym words. List section: ", synonyms_words[:40])
+print(">> ", len(synonyms_clases), "Synonym clases. List section: ", synonyms_clases)
+
 
 """
+# optional add a permutation logic to the synonym generation (not working)
+
 for frases in itertools.permutations(
     documents[sentence_no][intent_index],
     len(documents[sentence_no][intent_index])
     ):
     print("Frase: ", frases, "Sentence No. ", sentence_no, "intent index: ", intent_index) # [sentence as list][intent]
 """
-print(len(words), "Expanded set of lemmed words!")
-
 
 
 #########################################################
 ####------ create our training numeric data -------######
 #########################################################
 
+from keras.preprocessing import text
+from sklearn.utils import shuffle   
+from sklearn.preprocessing import MultiLabelBinarizer
+import pandas as pd
+
+
+# Prepare the data for preprocessing (Create the pandas DataFrame and shuffle)
+data = pd.DataFrame(synonyms_tagged_sentences, columns = ['Sentenece', 'tag',])  
+data = shuffle(data, random_state=22)
+print(data.head())
+
+# create the binary data from th dataset
+tag_encoder = MultiLabelBinarizer()
+num_tags = tag_encoder.fit_transform(data["tag"].values)
+print(num_tags)
+
+# create a dataset with the data coded (ones and ceros)
+word_tokenizer = text.Tokenizer(num_words=200)
+word_tokenizer.fit_on_texts([])
+
+
+"""
 training = []
 output = []
 # create an empty array for our output
-output_empty = [0] * len(classes)
+output_empty = [0] * len(synonyms_clases)
 
 # training set, bag of words for each sentence
 for doc in documents:
@@ -170,3 +189,5 @@ print (len(train_y), "training y. Y example: ", train_y[0])
 # save all of our data structures
 with open( "training_data.pickle", "wb" ) as pickle_data:
     pickle.dump( {'words':words, 'classes':classes, 'train_x':train_x, 'train_y':train_y},  pickle_data)
+
+"""
