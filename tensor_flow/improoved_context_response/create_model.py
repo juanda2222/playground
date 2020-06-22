@@ -2,27 +2,32 @@
 
 # things we need for Tensorflow
 import numpy as np
-import tflearn
+
 import tensorflow as tf
+from keras.layers import Dense
+from keras.models import Sequential
 
 # import our chat-bot intents file
 import pickle
+from pathlib import Path
 
 # restore all of our data structures
-with open('./training_data.pickle', "rb") as pickle_training_data:
+TRAINING_DATA_PATH = (Path(__file__).parent / "training_data.pickle").absolute()
+with open(TRAINING_DATA_PATH, "rb") as pickle_training_data:
     training_data = pickle.load(pickle_training_data)
 
-
-words = training_data['words']
-classes = training_data['classes']
+in_binarizer = training_data['in_binarizer']
 train_x = training_data['train_x']
 train_y = training_data['train_y']
+test_x = training_data['test_x']
+test_y = training_data['test_y']
 
 print ("Training data loaded:")
-print (len(classes), "classes (context)", classes)
-print (len(words), "unique stemmed words", words)
-print (len(train_x), "training x. X example: ", train_x)
-print (len(train_y), "training y. Y example: ", train_y)
+print ("In binarizer: ", in_binarizer)
+print (len(train_x), "Training x. X example: ", train_x)
+print (len(train_y), "Training y. Y example: ", train_y)
+print (len(test_x), "Testing x. X example: ", test_x)
+print (len(test_y), "Testing y. Y example: ", test_y)
 
 
 ############################################
@@ -30,29 +35,33 @@ print (len(train_y), "training y. Y example: ", train_y)
 ############################################
 
 # reset underlying graph data
-tf.reset_default_graph()
+tf.compat.v1.reset_default_graph()
 
-# Build neural network
-net = tflearn.input_data(shape=[None, len(train_x[0])])
-print(">> Input tensor: ", net)
-net = tflearn.fully_connected(net, 8)
-print(">> Layer 1 tensor: ", net)
-net = tflearn.fully_connected(net, 8)
-print(">> Layer 2 tensor: ", net)
-net = tflearn.fully_connected(net, len(train_y[0]), activation='softmax')
-print(">> Layer 3 tensor: ", net)
-net = tflearn.regression(net)
-print(">> Regresion layer tensor (softmax): ", net)
+model = Sequential()
+model.add( Dense( 40, input_shape=(len(train_x[0]),), activation="relu", name="Dense_input"))
+model.add( Dense( 15, activation="relu", name="Dense_hidden"))
+model.add( Dense( len(train_y[0]), activation="sigmoid", name="Dense_output" ))
 
-# Define model and setup tensorboard
-model = tflearn.DNN(net, tensorboard_dir='tflearn_logs')
-print(">> General model: ", model)
+# set the configuration of the learning process
+model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"]) 
 
-# Start training (apply gradient descent algorithm)
-model.fit(train_x, train_y, n_epoch=1000, batch_size=8, show_metric=True)
+#print the characteristics:
+model.summary()
 
-# Save model to file
-model.save('model.tflearn')
+# train the model
+# epochs No. of times the algoorithm will go through the entire dataset
+#batch_size is the group used to calculate the 
+model.fit(train_x, train_y, epochs=200, batch_size=20)
+
+# test the results
+print("Model testing results:")
+print("test x set:", test_x)
+print("test y set:", test_y)
+
+loss, acc = model.evaluate(test_x, test_y, batch_size=20)
+print('\nTesting loss: {}, acc: {}\n'.format(loss, acc))
 
 
-
+# save the model to disk
+MODEL_DATA_PATH = (Path(__file__).parent / "keras_model.h5").absolute()
+model.save(MODEL_DATA_PATH)

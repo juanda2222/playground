@@ -4,6 +4,8 @@ import json
 import tflearn
 import numpy as np
 import random
+from keras.models import load_model
+from pathlib import Path
 
 # things we need for NLP
 import nltk
@@ -15,20 +17,30 @@ stemmer = LancasterStemmer()
 ## ------ load saved data ----- ##
 ##################################
 
+# restore all of our data structure
+MODEL_PATH = (Path(__file__).parent / 'keras_model.h5').absolute()
+model = load_model(MODEL_PATH)
+
 # restore all of our data structures
-with open('./training_data.pickle', "rb") as pickle_training_data:
+TRAINING_DATA_PATH = (Path(__file__).parent / "training_data.pickle").absolute()
+with open(TRAINING_DATA_PATH, "rb") as pickle_training_data:
     training_data = pickle.load(pickle_training_data)
-
-words = training_data['words']
-classes = training_data['classes']
-train_x = training_data['train_x']
-train_y = training_data['train_y']
-
+  
 # import our chat-bot intents file
-with open('intents.json') as json_data:
+INTENTS_FILE_PATH = (Path(__file__).parent / "intents.json").absolute()
+with open(INTENTS_FILE_PATH) as json_data:
     intents = json.load(json_data)
 
+in_binarizer = training_data['in_binarizer']
+out_binarizer = training_data['out_binarizer']
+train_x = training_data['train_x']
+train_y = training_data['train_y']
+test_x = training_data['test_x']
+test_y = training_data['test_y']
 
+
+
+"""
 # Build neural network
 net = tflearn.input_data(shape=[None, len(train_x[0])])
 print(">> Input tensor: ", net)
@@ -48,44 +60,68 @@ print(">> General model: ", model)
 # load our saved model
 model.load('./model.tflearn')
 
+"""
 
-######################################################
-## ------ define the input processing helpers ----- ##
-######################################################
+#################################################################
+## ------ define the input and output processing helpers ----- ##
+#################################################################
 
-
-def clean_up_sentence(sentence):
-    # tokenize the pattern
-    sentence_words = nltk.word_tokenize(sentence)
-    # stem each word
-    sentence_words = [stemmer.stem(word.lower()) for word in sentence_words]
-    return sentence_words
 
 # return bag of words array: 0 or 1 for each word in the bag that exists in the sentence
-def bow(sentence, words, show_details=False):
+def input_convert_text2binary(sentence:str, show_details=False):
+
+    # ---- clean up the text: -----
     # tokenize the pattern
-    sentence_words = clean_up_sentence(sentence)
-    # bag of words
-    bag = [0]*len(words)  
-    for s in sentence_words:
-        for i,w in enumerate(words):
-            if w == s: 
-                bag[i] = 1
-                if show_details:
-                    print ("found in bag: %s" % w)
+    sentence_words = nltk.word_tokenize(sentence)
+    # stem and lowercase each word (not really that general)
+    #sentence_words = [stemmer.stem(word.lower()) for word in sentence_words]
 
-    return(np.array(bag))
+    # convert to binary format:
+    binarized_input = in_binarizer.texts_to_matrix([sentence_words])
 
+    if show_details:
+        print(
+            "For the input: ", 
+            sentence, 
+            " converted to: ", 
+            binarized_input, 
+            "vec size: ", 
+            len(binarized_input[0])
+            )
 
-p = bow("is your shop open today?", words)
-print("Testing input formatting with input:")
-print("> is your shop open today?")
-print(p)
+    return binarized_input
+
+# return bag of words array: 0 or 1 for each word in the bag that exists in the sentence
+def output_convert_binary2text(probability_vec:list, show_details=False):
+
+    tagged_vec = []
+
+    # append to an output vec the corresponding tag to each probability:
+    for i, prob in enumerate(probability_vec):
+        tagged_vec.append( (prob, out_binarizer.classes_[i]) )
+
+    if show_details:
+        print(
+            "For the input: ", 
+            probability_vec, 
+            " converted to the paired list: ", 
+            tagged_vec, 
+            "vec size: ", 
+            len(tagged_vec)
+            )
+    return tagged_vec
+
+# test the converters one at the time
+print("Testing input formatting...")
+binnary_input = input_convert_text2binary("Are you open?", show_details=True)
+print("Testing output formatting...")
+tagged_output = output_convert_binary2text([0,0.9,0,0,0,1,0,0.3,0], show_details=True)
 
 
 ###########################################
 ## ------ Start the text processor ----- ##
 ###########################################
+
 
 ERROR_THRESHOLD = 0.60
 
@@ -95,22 +131,21 @@ context = {}
 def classify(sentence):
 
     # generate probabilities from the model
-    results = model.predict([bow(sentence, words)])
+    results = model.predict(input_convert_text2binary(sentence))
     print("Raw results: ", results)
+    tagged_results = output_convert_binary2text(results[0])
+    print("Tagged results: ", tagged_results)
 
     # filter out predictions below a threshold
-    results = [[intent_index, probability] for intent_index, probability in enumerate(results[0]) if probability > ERROR_THRESHOLD]
-    print("Filtered by Threshold: ", results)
+    tagged_results = [ [probability, tag] for probability, tag in tagged_results if probability > ERROR_THRESHOLD ]
+    print("Filtered by Threshold: ", tagged_results)
 
     # sort by strength of probability
-    results.sort(key=lambda x: x[1], reverse=True)
-    print("Filtered and sorted vec: ", results)
+    tagged_results.sort(key=lambda x: x[0], reverse=True)
+    print("Filtered and sorted vec: ", tagged_results)
 
-    return_list = []
-    for r in results:
-        return_list.append((classes[r[0]], r[1]))
-    # return tuple of intent and probability
-    return return_list
+    return tagged_results
+    
 
 def response(sentence, userID='123', show_details=False):
     results = classify(sentence)
@@ -123,7 +158,7 @@ def response(sentence, userID='123', show_details=False):
             for i in intents['intents']:
 
                 # find a tag matching the first result
-                if i['tag'] == results[0][0]:
+                if i['tag'] == results[0][1]:
                     
                     # set context for this intent if necessary
                     if 'context_set' in i:
@@ -153,3 +188,4 @@ while True:
     user_text = input("")
     if user_text is not "":
         response(user_text, show_details=True)
+
