@@ -3,3 +3,4 @@
 
 /tensor_flow/basic_context_response_example/tflearn_logs*
 /tensor_flow/improoved_context_response/tflearn_logs/*
+tensor_flow/general_customer_service_chatbot/twcs/twcs.csv

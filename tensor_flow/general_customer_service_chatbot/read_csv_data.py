@@ -21,41 +21,43 @@ def print_tweets_from_parent_tweet(pandas_dataset, tweet_id_responses: list, twe
     for tweet_id in tweet_id_responses:
         source_row = pandas_dataset.loc[ pandas_dataset["tweet_id"] == int(tweet_id) ]
 
-        #create a message list
-        data_list.append({
-            "tweet_id": source_row["tweet_id"].values[0], 
-            "author_id": source_row["author_id"].values[0],
-            "text": source_row["text"].values[0]
-            })
+        if len(source_row) > 0:
 
-        
-        #print( 
-        #    padding, " Tweet no:", source_row["tweet_id"].values,
-        #    "User: ", source_row["author_id"].values, "Says: ", source_row["text"].values
-        #) 
+            #create a message list
+            data_list.append({
+                "tweet_id": source_row["tweet_id"].values[0], 
+                "author_id": source_row["author_id"].values[0],
+                "text": source_row["text"].values[0],
+                })
 
-        # generate the list of response tweets if possible
-        pandas_response_field = source_row["response_tweet_id"].values[0]
-        #print("--- Item: ", pandas_response_field)
+            print(data_list)
+            #print( 
+            #    padding, " Tweet no:", source_row["tweet_id"].values,
+            #    "User: ", source_row["author_id"].values, "Says: ", source_row["text"].values
+            #) 
 
-        if isinstance(pandas_response_field, str):
+            # generate the list of response tweets if possible
+            pandas_response_field = source_row["response_tweet_id"].values[0]
+            #print("--- Item: ", pandas_response_field)
 
-            # format to list and process each id
-            response_list = pandas_response_field.split(",")
-            print_tweets_from_parent_tweet(pandas_dataset, response_list, tweet_list)
+            if isinstance(pandas_response_field, str):
 
-        # if the field if not empty (we go to the thread that )
-        elif not math.isnan(pandas_response_field):
+                # format to list and process each id
+                response_list = pandas_response_field.split(",")
+                print_tweets_from_parent_tweet(pandas_dataset, response_list, tweet_list)
 
-            # got o the response tweet
-            response_list = [pandas_response_field] # pandas always returns a list
-            print_tweets_from_parent_tweet(pandas_dataset, response_list, tweet_list)
+            # if the field if not empty (we go to the thread that )
+            elif not math.isnan(pandas_response_field):
 
-        # no response found... exit small while:
-        else:
+                # got o the response tweet
+                response_list = [pandas_response_field] # pandas always returns a list
+                print_tweets_from_parent_tweet(pandas_dataset, response_list, tweet_list)
 
-            # no response list stop the recurrency
-            pass
+            # no response found... exit small while:
+            else:
+
+                # no response list stop the recurrency
+                pass
 
     #due to recursion the list is created starting from the last item
     #data_list.reverse()
@@ -77,7 +79,7 @@ if __name__ == "__main__":
     conversation_starters_dataset = dataset_pandas.loc[ dataset_pandas["in_response_to_tweet_id"].isnull()]
 
     # The first name and text
-    conversation_pointer = 5
+    conversation_pointer = 26
     next_tweet_id = conversation_starters_dataset["tweet_id"].values[conversation_pointer]
     
     
@@ -85,7 +87,7 @@ if __name__ == "__main__":
     while True:    
 
         # use the recursive function to print all the thread:
-        print("--------  Conversation number "+conversation_pointer +": --------- ")
+        print("--------  Conversation number "+str(conversation_pointer) +": --------- ")
         tweet_list = list()
         print_tweets_from_parent_tweet(dataset_pandas, [next_tweet_id], tweet_list)
         for response_list in tweet_list:
@@ -98,6 +100,11 @@ if __name__ == "__main__":
         next_tweet_id = int(conversation_starters_dataset["tweet_id"].values[conversation_pointer])
 
     
-    # noise words:
+    # Filtter the dataset with:
+    # -------------------------
     # filtter all the i am
-    # -aa -ResolutionSup SR http* -fr ^jk -jb � 😩 ^hsb ^ACM ^JAY ^NHP ^kmg ^bcw
+    # filtter all the emojis or use them in emotion processing
+    # modify or remove the @ when mentioning someone. Ej: @whatever is the worst buissness ...
+    # Use personal handling customer service. Ej: get more information here: http... (probably best if it is included in the context manager)
+    # Remove all urls: http* 
+    # Remove ¨signature tags -* , ^*s
