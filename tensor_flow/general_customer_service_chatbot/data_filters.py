@@ -15,11 +15,13 @@ def deEmojify(text):
     
 if __name__ == "__main__":
     
-    text2 = "happy Halloween �😭"
-
-    text = u'This is a smiley face \U0001f602'
-    print(text) # with emoji
+    text1 = u'This is a smiley face \U0001f602'
+    text2 = "happy Halloween � 😭"
 
     
-
-    print(deEmojify(text))
+    print(text1) # with emoji
+    print(deEmojify(text1))
+    print(text1.encode("utf-8"))
+    print(text2) # with emoji
+    print(deEmojify(text2))
+    print(text2.encode("utf-8"))
