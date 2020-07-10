@@ -38,9 +38,9 @@ class Solution:
         print(pairing_matrix)
 
         # process the id matrix
-        for j in pairing_matrix:
-            for j in pairing_matrix:
-                pass
+        for k, element in enumerate(pairing_matrix):
+            for i in element:
+                
             
             #depending on the symbol join to the bigger one
         
