@@ -68,6 +68,25 @@ class Solution:
       return False
 
       
+from operator import truediv, mul, add, sub
+
+class SolutionOfficial(object):
+    def judgePoint24(self, A):
+        print(A)
+        if not A: return False
+        if len(A) == 1: return abs(A[0] - 24) < 1e-6
+
+        for i in range(len(A)):
+            for j in range(len(A)):
+                if i != j:
+                    B = [A[k] for k in range(len(A)) if i != k != j]
+                    for op in (truediv, mul, add, sub):
+                        if (op is add or op is mul) and j > i: continue
+                        if op is not truediv or A[j]:
+                            B.append(op(A[i], A[j]))
+                            if self.judgePoint24(B): return True
+                            B.pop()
+        return False
           
 
 num = [1,1,7,7] # false
@@ -75,6 +94,11 @@ num_list = [4, 1, 8, 7]
 num_list2 = [1, 3, 4, 6] # True
 num_list3 = [1, 2, 1, 2]
 num_list4 = [8,1,6,6]
-sol = Solution()
+#sol = Solution()
+#ret = sol.judgePoint24(num)
+#print("Return:", ret)
+
+# official
+sol = SolutionOfficial()
 ret = sol.judgePoint24(num)
-print("Return:", ret)
+print("Return oficial:", ret)
